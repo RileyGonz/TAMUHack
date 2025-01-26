@@ -1,65 +1,123 @@
-from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+import sqlite3
+from sqlite3 import Error
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///finances.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Function to create a connection to the SQLite database
+def create_connection(db_file):
+    conn = None
+    try:
+        conn = sqlite3.connect(db_file)
+        print(f"Connected to SQLite database: {db_file}")
+        return conn
+    except Error as e:
+        print(f"Error connecting to database: {e}")
+    return conn
 
-db = SQLAlchemy(app)
+# Function to create the table
+def create_table(conn):
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_finances (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                total_money REAL DEFAULT 0,
+                total_hours_worked REAL DEFAULT 0,
+                UNIQUE(user_id)
+            )
+        ''')
+        print("Table 'user_finances' created successfully.")
+    except Error as e:
+        print(f"Error creating table: {e}")
 
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    initial_amount = db.Column(db.Float, nullable=False)
-    hourly_wage = db.Column(db.Float, nullable=False)
-    hours_per_week = db.Column(db.Float, nullable=False)
+# Function to insert or update user data
+def update_user_finances(conn, user_id, money_earned=0, hours_worked=0):
+    try:
+        cursor = conn.cursor()
+        # Check if the user already exists
+        cursor.execute('SELECT * FROM user_finances WHERE user_id = ?', (user_id,))
+        user = cursor.fetchone()
 
+        if user:
+            # Update existing user
+            new_total_money = user[2] + money_earned
+            new_total_hours = user[3] + hours_worked
+            cursor.execute('''
+                UPDATE user_finances
+                SET total_money = ?, total_hours_worked = ?
+                WHERE user_id = ?
+            ''', (new_total_money, new_total_hours, user_id))
+        else:
+            # Insert new user
+            cursor.execute('''
+                INSERT INTO user_finances (user_id, total_money, total_hours_worked)
+                VALUES (?, ?, ?)
+            ''', (user_id, money_earned, hours_worked))
 
-class Expense(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    description = db.Column(db.String(200), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
-    date = db.Column(db.Date, nullable=False)
+        conn.commit()
+        print(f"Updated finances for user {user_id}.")
+    except Error as e:
+        print(f"Error updating user finances: {e}")
 
+# Function to fetch user data
+def get_user_finances(conn, user_id):
+    try:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM user_finances WHERE user_id = ?', (user_id,))
+        user = cursor.fetchone()
+        if user:
+            print(f"User ID: {user[1]}, Total Money: {user[2]}, Total Hours Worked: {user[3]}")
+            return user
+        else:
+            print(f"No data found for user {user_id}.")
+            return None
+    except Error as e:
+        print(f"Error fetching user finances: {e}")
 
-class Bonus(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    description = db.Column(db.String(200), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
-    date = db.Column(db.Date, nullable=False)
+# Function to get user input
+def get_user_input():
+    try:
+        user_id = int(input("Enter your user ID: "))
+        money_earned = float(input("Enter the amount of money earned: "))
+        hours_worked = float(input("Enter the number of hours worked: "))
+        return user_id, money_earned, hours_worked
+    except ValueError:
+        print("Invalid input. Please enter numeric values.")
+        return None, None, None
+    
+    
+def clear_table(conn):
+    try:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM user_finances')
+        conn.commit()
+        print("All rows deleted from the table.")
+    except Error as e:
+        print(f"Error clearing table: {e}")
 
+# Main function to demonstrate usage
+def main():
+    database = "user_finances.db"
 
-class NonWorkingDay(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    date = db.Column(db.Date, nullable=False)
-    description = db.Column(db.String(200), nullable=True)
+    # Create a database connection
+    conn = create_connection(database)
+    if conn is not None:
+        # Create the table
+        create_table(conn)
 
+        # Get user input
+        user_id, money_earned, hours_worked = get_user_input()
+        if user_id is not None and money_earned is not None and hours_worked is not None:
+            # Update user finances
+            update_user_finances(conn, user_id, money_earned, hours_worked)
 
-class PayException(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    date = db.Column(db.Date, nullable=False)
-    amount = db.Column(db.Float, nullable=False)
-    description = db.Column(db.String(200), nullable=True)
+            # Fetch and display user finances
+            get_user_finances(conn, user_id)
 
-
-@app.route('/expenses', methods=['POST'])
-def add_expense():
-    data = request.get_json()
-    new_expense = Expense(
-        user_id=data['user_id'],
-        description=data['description'],
-        amount=data['amount'],
-        date=datetime.strptime(data['date'], '%Y-%m-%d')
-    )
-    db.session.add(new_expense)
-    db.session.commit()
-    return jsonify({'id': new_expense.id}), 201
-
+        # Close the connection
+        clear_table(conn)
+        conn.close()
+    else:
+        print("Error: Could not connect to the database.")
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    main()
