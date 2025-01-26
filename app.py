@@ -1,6 +1,11 @@
 import sqlite3
 from sqlite3 import Error
 from datetime import datetime, date, timedelta
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app)  # allows React to communicate with Flask - connect frontend w backend
 
 
 # Function to create a connection to the SQLite database
@@ -98,24 +103,24 @@ def calculate_days_between_dates(date1_str, date2_str):
         return None
 
 # Function to get user input
-def get_user_input():
-    try:
-        user_id = int(input("Enter your user ID: "))
-        money_earned = float(input("Enter the amount of money earned: "))
-        hours_worked = float(input("Enter the number of hours worked: "))
-        hourly_wage = float(input("Enter the hourly wage: "))
-        expected_finances = float(input("Enter the number of expected finances: "))
-        planned_expenses = float(input("Enter the number of planned expanses: "))
-        bonuses_raises = float(input("Enter the number of bonus raises: "))
-        days_off = int(input("Enter the number of days off: "))
-        payed_time_off_exceptions = int(input("Enter the number of payed days off: "))
-        curr_date = input("Enter the current date: ").strip()
-        exp_date = input("Enter the expected date: ").strip()
+# def get_user_input():
+#     try:
+#         user_id = int(input("Enter your user ID: "))
+#         money_earned = float(input("Enter the amount of money earned: "))
+#         hours_worked = float(input("Enter the number of hours worked: "))
+#         hourly_wage = float(input("Enter the hourly wage: "))
+#         expected_finances = float(input("Enter the number of expected finances: "))
+#         planned_expenses = float(input("Enter the number of planned expanses: "))
+#         bonuses_raises = float(input("Enter the number of bonus raises: "))
+#         days_off = int(input("Enter the number of days off: "))
+#         payed_time_off_exceptions = int(input("Enter the number of payed days off: "))
+#         curr_date = input("Enter the current date: ").strip()
+#         exp_date = input("Enter the expected date: ").strip()
 
-        return user_id, money_earned, hours_worked, hourly_wage, expected_finances, planned_expenses, bonuses_raises, days_off, payed_time_off_exceptions, curr_date, exp_date
-    except ValueError:
-        print("Invalid input. Please enter numeric values.")
-        return None, None, None
+#         return user_id, money_earned, hours_worked, hourly_wage, expected_finances, planned_expenses, bonuses_raises, days_off, payed_time_off_exceptions, curr_date, exp_date
+#     except ValueError:
+#         print("Invalid input. Please enter numeric values.")
+#         return None, None, None
     
     
 def clear_table(conn):
@@ -127,55 +132,128 @@ def clear_table(conn):
     except Error as e:
         print(f"Error clearing table: {e}")
 
-def main():
-    database = "user_finances.db"
+# def main():
+#     database = "user_finances.db"
 
-    # Create a database connection
-    conn = create_connection(database)
-    if conn is not None:
-        # Create the table if it doesn't exist
-        create_table(conn)
+#     # Create a database connection
+#     conn = create_connection(database)
+#     if conn is not None:
+#         # Create the table if it doesn't exist
+#         create_table(conn)
 
-        #add_exp_date_column(conn)
+#         #add_exp_date_column(conn)
 
-        # Get user input for finances
-        user_id, money_earned, hours_worked, hourly_wage, expected_finances, planned_expenses, bonuses_raises, days_off, payed_time_off_exceptions, curr_date, exp_date = get_user_input()
+#         # Get user input for finances
+#         user_id, money_earned, hours_worked, hourly_wage, expected_finances, planned_expenses, bonuses_raises, days_off, payed_time_off_exceptions, curr_date, exp_date = get_user_input()
 
-        if user_id is not None and money_earned is not None and hours_worked is not None:
-            # Perform calculations
-            total_money = money_earned
-            total_hours_worked = hours_worked
-            new_total_money = total_money + total_money  # example update for current balance
+#         if user_id is not None and money_earned is not None and hours_worked is not None:
+#             # Perform calculations
+#             total_money = money_earned
+#             total_hours_worked = hours_worked
+#             new_total_money = total_money + total_money  # example update for current balance
 
-            print(f"Current total money: {new_total_money}")
-            expected_expenses = new_total_money * 0.08
-            print(f"Expected expenses: {expected_expenses}")
+#             print(f"Current total money: {new_total_money}")
+#             expected_expenses = new_total_money * 0.08
+#             print(f"Expected expenses: {expected_expenses}")
 
-            # Ask user if they have expected finances
-            answer = input("Do you have expected finances? Enter Y/N: ").strip().upper()
-            if answer == "Y":
-                expected_expenses = new_total_money * 0.08  # example: adjust based on actual logic
-                finances = (hourly_wage * hours_worked) - expected_expenses
-                new_total_money = finances - expected_finances  # update money after expected expenses
-            elif answer == "N":
-                finances = hourly_wage * hours_worked
-                new_total_money = finances
-                print(f"Calculated finances without expected expenses: {new_total_money}")
-            else:
-                print("Invalid input. Please enter 'Y' or 'N'.")
-                return
+#             # Ask user if they have expected finances
+#             answer = input("Do you have expected finances? Enter Y/N: ").strip().upper()
+#             if answer == "Y":
+#                 expected_expenses = new_total_money * 0.08  # example: adjust based on actual logic
+#                 finances = (hourly_wage * hours_worked) - expected_expenses
+#                 new_total_money = finances - expected_finances  # update money after expected expenses
+#             elif answer == "N":
+#                 finances = hourly_wage * hours_worked
+#                 new_total_money = finances
+#                 print(f"Calculated finances without expected expenses: {new_total_money}")
+#             else:
+#                 print("Invalid input. Please enter 'Y' or 'N'.")
+#                 return
 
-            # Call the function to update user finances in the database
-            update_user_finances(conn, user_id, new_total_money, hours_worked, hourly_wage, expected_finances, planned_expenses, bonuses_raises, days_off, payed_time_off_exceptions, curr_date, exp_date)
+#             # Call the function to update user finances in the database
+#             update_user_finances(conn, user_id, new_total_money, hours_worked, hourly_wage, expected_finances, planned_expenses, bonuses_raises, days_off, payed_time_off_exceptions, curr_date, exp_date)
 
-            # Fetch and display updated user finances
-            get_user_finances(conn, user_id)
+#             # Fetch and display updated user finances
+#             get_user_finances(conn, user_id)
 
-        # Clear table and close connection after all operations
-        clear_table(conn)
+#         # Clear table and close connection after all operations
+#         clear_table(conn)
+#         conn.close()
+#     else:
+#         print("Error: Could not connect to the database.")
+
+# API route to handle data from react
+@app.route("/update_finances", methods=["POST"])
+def update_finances():
+    data = request.json  # receive json data from frontend
+
+    try:
+        conn = create_connection()
+        cursor = conn.cursor()
+
+        # extract data from JSON
+        user_id = data["user_id"]
+        money_earned = float(data["money_earned"])
+        hours_worked = float(data["hours_worked"])
+        hourly_wage = float(data["hourly_wage"])
+        expected_finances = float(data["expected_finances"])
+        planned_expenses = float(data["planned_expenses"])
+        bonuses_raises = float(data["bonuses_raises"])
+        days_off = int(data["days_off"])
+        payed_time_off_exceptions = int(data["payed_time_off_exceptions"])
+        curr_date = data["curr_date"]
+        exp_date = data["exp_date"]
+
+        # math
+        total_money = money_earned + bonuses_raises
+        total_hours_worked = hours_worked - days_off + payed_time_off_exceptions
+        expected_expenses = total_money * 0.08  
+        net_finances = (hourly_wage * total_hours_worked) - expected_expenses - planned_expenses
+
+        #check if user exists in database
+        cursor.execute("SELECT * FROM user_finances WHERE user_id = ?", (user_id,))
+        user = cursor.fetchone()
+
+        if user:
+            #update existing record
+            cursor.execute("""
+                UPDATE user_finances
+                SET total_money = ?, total_hours_worked = ?, hourly_wage = ?, expected_finances = ?, planned_expenses = ?, bonuses_raises = ?, days_off = ?, payed_time_off_exceptions = ?, curr_date = ?, exp_date = ?
+                WHERE user_id = ?
+            """, (total_money, total_hours_worked, hourly_wage, expected_finances, planned_expenses, bonuses_raises, days_off, payed_time_off_exceptions, curr_date, exp_date, user_id))
+        else:
+            #insert new record
+            cursor.execute("""
+                INSERT INTO user_finances (user_id, total_money, total_hours_worked, hourly_wage, expected_finances, planned_expenses, bonuses_raises, days_off, payed_time_off_exceptions, curr_date, exp_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (user_id, total_money, total_hours_worked, hourly_wage, expected_finances, planned_expenses, bonuses_raises, days_off, payed_time_off_exceptions, curr_date, exp_date))
+
+        conn.commit()
+        
+        #Fetch updated data & return to frontend
+        cursor.execute("SELECT * FROM user_finances WHERE user_id = ?", (user_id,))
+        updated_user = cursor.fetchone()
         conn.close()
-    else:
-        print("Error: Could not connect to the database.")
+
+        return jsonify({
+            "user_id": updated_user[1],
+            "total_money": updated_user[2],
+            "total_hours_worked": updated_user[3],
+            "hourly_wage": updated_user[4],
+            "expected_finances": updated_user[5],
+            "planned_expenses": updated_user[6],
+            "bonuses_raises": updated_user[7],
+            "days_off": updated_user[8],
+            "payed_time_off_exceptions": updated_user[9],
+            "curr_date": updated_user[10],
+            "exp_date": updated_user[11],
+            "expected_expenses": expected_expenses,  
+            "net_finances": net_finances  
+        })
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
-    main()
+    app.run(debug=True, port=5000)
